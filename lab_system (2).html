@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مدرسة إنجاز | نظام المختبر الذكي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --primary:#1b2a5e;
+  --primary-dark:#0f1a40;
+  --primary-light:#eef1fa;
+  --accent:#f3b62b;
+  --accent-dark:#d99c14;
+  --accent-light:#fdf3dc;
+  --danger:#c0392b;
+  --danger-light:#fbe6e3;
+  --warning:#d4900f;
+  --warning-light:#fdf2df;
+  --success:#1f8a4c;
+  --success-light:#e5f6ec;
+  --info:#3b5fc4;
+  --info-light:#e9edfc;
+  --bg:#f4f5fa;
+  --card:#ffffff;
+  --border:#e2e4ef;
+  --text:#1b1f2e;
+  --text-muted:#666c85;
+  --sidebar-w:260px;
+  --radius:14px;
+  --shadow:0 2px 10px rgba(15,25,60,0.07);
+  --shadow-lg:0 12px 30px rgba(15,25,60,0.18);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:'Cairo',Tahoma,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  direction:rtl;
+  min-height:100vh;
+}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+
+/* ===== Layout ===== */
+.app{display:flex; min-height:100vh;}
+
+.sidebar{
+  width:var(--sidebar-w);
+  background:linear-gradient(180deg,var(--primary-dark),var(--primary));
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  position:fixed;
+  right:0; top:0; bottom:0;
+  z-index:200;
+  transition:transform .25s ease;
+  border-left:3px solid var(--accent);
+}
+.sidebar-header{
+  padding:22px 20px 16px;
+  border-bottom:1px solid rgba(255,255,255,.15);
+}
+.sidebar-header .school-name{
+  display:inline-block; background:var(--accent); color:var(--primary-dark);
+  font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px; margin-bottom:10px;
+  letter-spacing:.3px;
+}
+.sidebar-header .logo{
+  display:flex; align-items:center; gap:10px; margin-bottom:6px;
+}
+.sidebar-header .logo-icon{
+  width:38px; height:38px; border-radius:10px; background:var(--accent);
+  color:var(--primary-dark);
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+}
+.sidebar-header h1{font-size:17px; font-weight:800;}
+.sidebar-header p{font-size:11.5px; color:rgba(255,255,255,.75); margin-top:4px; line-height:1.5;}
+
+.nav{flex:1; overflow-y:auto; padding:14px 12px;}
+.nav-item{
+  display:flex; align-items:center; gap:12px;
+  padding:12px 14px; border-radius:10px; color:rgba(255,255,255,.85);
+  font-size:14.5px; font-weight:600; margin-bottom:4px; border:none; background:transparent;
+  width:100%; text-align:right; transition:background .15s, color .15s;
+}
+.nav-item .ic{font-size:18px; width:22px; text-align:center;}
+.nav-item:hover{background:rgba(255,255,255,.1); color:#fff;}
+.nav-item.active{background:var(--accent); color:var(--primary-dark); box-shadow:var(--shadow); font-weight:800;}
+.nav-badge{
+  margin-inline-start:auto; background:var(--danger); color:#fff; border-radius:20px;
+  font-size:11px; font-weight:700; padding:1px 7px; min-width:18px; text-align:center;
+}
+.nav-item.active .nav-badge{background:var(--danger);}
+
+.sidebar-footer{padding:14px 16px 18px; border-top:1px solid rgba(255,255,255,.15);}
+.sidebar-footer .sf-btn{
+  width:100%; padding:9px 10px; border-radius:9px; border:1px solid rgba(255,255,255,.3);
+  background:rgba(255,255,255,.08); color:#fff; font-size:12.5px; font-weight:600; margin-bottom:8px;
+  display:flex; align-items:center; gap:8px;
+}
+.sidebar-footer .sf-btn:hover{background:rgba(255,255,255,.18);}
+.sidebar-footer .sf-btn.danger{border-color:rgba(255,120,110,.5);}
+.sidebar-footer input[type=file]{display:none;}
+
+.menu-toggle{
+  display:none; position:fixed; top:14px; left:14px; z-index:300;
+  background:var(--primary); color:#fff; border:none; width:42px; height:42px;
+  border-radius:10px; font-size:18px; box-shadow:var(--shadow-lg);
+}
+
+.overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:150;}
+.overlay.show{display:block;}
+
+.main{
+  margin-right:var(--sidebar-w);
+  flex:1;
+  padding:26px 30px 60px;
+  width:100%;
+}
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px;
+}
+.topbar h2{font-size:22px; font-weight:800; color:var(--primary-dark);}
+.topbar p{font-size:13px; color:var(--text-muted); margin-top:3px;}
+.topbar-actions{display:flex; gap:10px; flex-wrap:wrap;}
+
+.page{display:none; animation:fadeIn .25s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+/* ===== Buttons ===== */
+.btn{
+  display:inline-flex; align-items:center; gap:7px; padding:10px 16px; border-radius:10px;
+  border:1px solid transparent; font-size:13.5px; font-weight:700; background:var(--primary); color:#fff;
+  transition:all .15s;
+}
+.btn:hover{background:var(--primary-dark);}
+.btn.secondary{background:#fff; color:var(--primary-dark); border-color:var(--border);}
+.btn.secondary:hover{background:var(--primary-light);}
+.btn.danger{background:var(--danger);}
+.btn.danger:hover{background:#a53324;}
+.btn.ghost{background:transparent; color:var(--text-muted); border-color:var(--border);}
+.btn.sm{padding:6px 11px; font-size:12.5px; border-radius:8px;}
+.btn:disabled{opacity:.5; cursor:not-allowed;}
+.btn.gold{background:var(--accent); color:var(--primary-dark);}
+.btn.gold:hover{background:var(--accent-dark);}
+
+/* ===== Cards / Stats ===== */
+.stat-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:22px;}
+.stat-card{
+  background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);
+  border:1px solid var(--border); position:relative; overflow:hidden;
+}
+.stat-card .stat-icon{
+  width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+  font-size:22px; margin-bottom:10px;
+}
+.stat-card .stat-val{font-size:26px; font-weight:800; color:var(--text);}
+.stat-card .stat-label{font-size:12.5px; color:var(--text-muted); font-weight:600; margin-top:2px;}
+.stat-card.c-total .stat-icon{background:var(--info-light); color:var(--info);}
+.stat-card.c-ok .stat-icon{background:var(--success-light); color:var(--success);}
+.stat-card.c-down .stat-icon{background:var(--danger-light); color:var(--danger);}
+.stat-card.c-book .stat-icon{background:var(--accent-light); color:var(--accent-dark);}
+.stat-card.c-late .stat-icon{background:var(--warning-light); color:var(--warning);}
+.stat-card{border-top:3px solid var(--primary);}
+.stat-card.c-book{border-top-color:var(--accent);}
+
+.panel{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); padding:20px; margin-bottom:20px;}
+.panel-title{font-size:15.5px; font-weight:800; margin-bottom:14px; display:flex; align-items:center; gap:8px; color:var(--primary-dark); border-bottom:2px solid var(--accent-light); padding-bottom:10px;}
+
+.dash-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:18px;}
+@media (max-width:1100px){.dash-grid{grid-template-columns:1fr;}}
+
+.alert-item{
+  display:flex; align-items:flex-start; gap:10px; padding:11px 12px; border-radius:10px; margin-bottom:8px;
+  font-size:13px; border:1px solid; line-height:1.6;
+}
+.alert-item.warn{background:var(--warning-light); border-color:#f2dba6; color:#7a5a06;}
+.alert-item.danger{background:var(--danger-light); border-color:#f0c3bb; color:#8c2c1d;}
+.alert-item.ok{background:var(--success-light); border-color:#bfe6cd; color:#155c33;}
+.alert-item b{display:block; margin-bottom:2px;}
+.alert-ic{font-size:16px; margin-top:1px;}
+
+.mini-table{width:100%; border-collapse:collapse; font-size:13px;}
+.mini-table th{text-align:right; color:var(--text-muted); font-weight:700; padding:8px 6px; border-bottom:2px solid var(--border); font-size:12px;}
+.mini-table td{padding:9px 6px; border-bottom:1px solid var(--border);}
+
+/* ===== Toolbar (search/filter) ===== */
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px;}
+.toolbar input[type=text], .toolbar select{
+  padding:9px 12px; border:1px solid var(--border); border-radius:9px; font-size:13px; background:#fff; color:var(--text);
+}
+.toolbar input[type=text]{flex:1; min-width:180px;}
+.toolbar select{min-width:130px;}
+
+/* ===== Table ===== */
+.table-wrap{overflow-x:auto; border-radius:12px; border:1px solid var(--border);}
+table.data-table{width:100%; border-collapse:collapse; min-width:820px; font-size:13px; background:#fff;}
+table.data-table thead th{
+  background:var(--primary); color:#fff; font-weight:800; text-align:right;
+  padding:11px 10px; white-space:nowrap; position:sticky; top:0;
+}
+table.data-table tbody td{padding:10px 10px; border-bottom:1px solid var(--border); white-space:nowrap;}
+table.data-table tbody tr:hover{background:#fafdfd;}
+table.data-table tbody tr.row-critical{background:var(--danger-light);}
+.actions-cell{display:flex; gap:6px;}
+.icon-btn{
+  border:1px solid var(--border); background:#fff; border-radius:7px; width:30px; height:30px;
+  display:inline-flex; align-items:center; justify-content:center; font-size:14px; color:var(--text-muted);
+}
+.icon-btn:hover{background:var(--primary-light); color:var(--primary-dark);}
+.icon-btn.del:hover{background:var(--danger-light); color:var(--danger);}
+
+.badge{display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700;}
+.badge::before{content:''; width:7px; height:7px; border-radius:50%; background:currentColor;}
+.badge.ok{background:var(--success-light); color:var(--success);}
+.badge.warn{background:var(--warning-light); color:var(--warning);}
+.badge.danger{background:var(--danger-light); color:var(--danger);}
+.badge.info{background:var(--info-light); color:var(--info);}
+.badge.muted{background:#eef1f1; color:var(--text-muted);}
+
+.empty-state{text-align:center; padding:40px 20px; color:var(--text-muted); font-size:13.5px;}
+
+/* ===== Modal ===== */
+.modal-overlay{
+  display:none; position:fixed; inset:0; background:rgba(15,30,30,.5); z-index:400;
+  align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(2px);
+}
+.modal-overlay.show{display:flex;}
+.modal-box{
+  background:#fff; border-radius:16px; width:100%; max-width:640px; max-height:90vh; overflow-y:auto;
+  box-shadow:var(--shadow-lg); animation:pop .18s ease;
+}
+@keyframes pop{from{transform:scale(.96); opacity:0;} to{transform:scale(1); opacity:1;}}
+.modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--border);}
+.modal-head h3{font-size:16.5px; font-weight:800; color:var(--primary-dark);}
+.modal-close{background:none; border:none; font-size:20px; color:var(--text-muted); width:32px; height:32px; border-radius:8px;}
+.modal-close:hover{background:#f1f4f4;}
+.modal-body{padding:20px 22px;}
+.modal-foot{display:flex; justify-content:flex-end; gap:10px; padding:16px 22px; border-top:1px solid var(--border);}
+
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.form-field{display:flex; flex-direction:column; gap:6px;}
+.form-field.full{grid-column:1/-1;}
+.form-field label{font-size:12.5px; font-weight:700; color:var(--text-muted);}
+.form-field input, .form-field select, .form-field textarea{
+  padding:10px 12px; border:1px solid var(--border); border-radius:9px; font-size:13.5px; background:#fbfdfd; color:var(--text);
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus{outline:2px solid var(--primary); background:#fff;}
+.form-field textarea{resize:vertical; min-height:60px;}
+
+.form-msg{padding:11px 13px; border-radius:9px; font-size:13px; margin-bottom:14px; display:none; line-height:1.7;}
+.form-msg.show{display:block;}
+.form-msg.error{background:var(--danger-light); color:var(--danger); border:1px solid #f0c3bb;}
+.form-msg.info{background:var(--info-light); color:var(--info); border:1px solid #c7d3f5;}
+.form-msg .alt-btn{margin-top:8px;}
+
+/* ===== Toast ===== */
+.toast-wrap{position:fixed; bottom:22px; left:22px; z-index:500; display:flex; flex-direction:column; gap:10px;}
+.toast{
+  background:#1f2b2b; color:#fff; padding:13px 18px; border-radius:10px; font-size:13.5px; font-weight:600;
+  box-shadow:var(--shadow-lg); display:flex; align-items:center; gap:10px; min-width:240px;
+  animation:slideIn .2s ease;
+}
+.toast.success{background:#17693f;}
+.toast.error{background:#8c2c1d;}
+.toast.info{background:#264a7a;}
+@keyframes slideIn{from{transform:translateY(15px); opacity:0;} to{transform:none; opacity:1;}}
+
+/* ===== Reports ===== */
+.report-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.rtab{padding:9px 16px; border-radius:9px; border:1px solid var(--border); background:#fff; font-size:13px; font-weight:700; color:var(--text-muted);}
+.rtab.active{background:var(--primary); color:var(--accent); border-color:var(--primary);}
+#report-print-area{background:#fff; border-radius:12px; border:1px solid var(--border); padding:22px;}
+.report-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:3px solid var(--accent); padding-bottom:12px;}
+.report-header h3{color:var(--primary-dark); font-size:17px;}
+.report-header span{font-size:12px; color:var(--text-muted);}
+
+footer.credit{text-align:center; color:var(--text-muted); font-size:11.5px; padding:20px 0 4px;}
+
+@media print{
+  .sidebar, .topbar-actions, .menu-toggle, .toolbar, .no-print{display:none !important;}
+  .main{margin:0; padding:0;}
+  body{background:#fff;}
+  .page{display:none !important;}
+  .page.printing{display:block !important;}
+  .panel{box-shadow:none; border:none;}
+}
+
+@media (max-width:960px){
+  .sidebar{transform:translateX(100%);}
+  .sidebar.open{transform:translateX(0);}
+  .main{margin-right:0; padding:70px 16px 40px;}
+  .menu-toggle{display:flex; align-items:center; justify-content:center;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .form-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<button class="menu-toggle" id="menuToggle">☰</button>
+<div class="overlay" id="overlay"></div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="school-name">مدرسة إنجاز</span>
+      <div class="logo">
+        <div class="logo-icon">🧪</div>
+        <div>
+          <h1>نظام المختبر الذكي</h1>
+        </div>
+      </div>
+      <p>إدارة الأجهزة والحجوزات والصيانة والإعارات<br><span style="opacity:.7">Smart Digital Lab System</span></p>
+    </div>
+    <nav class="nav" id="navMenu">
+      <button class="nav-item" data-section="dashboard"><span class="ic">📊</span><span>الرئيسية</span></button>
+      <button class="nav-item" data-section="bookings"><span class="ic">📅</span><span>حجوزات المختبر</span></button>
+      <button class="nav-item" data-section="devices"><span class="ic">💻</span><span>الأجهزة</span></button>
+      <button class="nav-item" data-section="maintenance"><span class="ic">🛠️</span><span>الصيانة</span><span class="nav-badge" id="badgeMaint"></span></button>
+      <button class="nav-item" data-section="loans"><span class="ic">📦</span><span>الإعارات</span><span class="nav-badge" id="badgeLoans"></span></button>
+      <button class="nav-item" data-section="reports"><span class="ic">🖨️</span><span>التقارير</span></button>
+    </nav>
+    <div class="sidebar-footer">
+      <label class="sf-btn" for="importExcelInput">⬆️ استيراد ملف Excel</label>
+      <input type="file" id="importExcelInput" accept=".xlsx,.xls">
+      <button class="sf-btn" id="exportExcelBtn">⬇️ تصدير البيانات إلى Excel</button>
+      <button class="sf-btn danger" id="resetDataBtn">♻️ مسح البيانات المحلية</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div>
+          <h2>لوحة المؤشرات</h2>
+          <p>نظرة عامة على حالة المختبرات الرقمية</p>
+        </div>
+      </div>
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="panel-title">🔔 تنبيهات مهمة</div>
+          <div id="alertsBox"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">📅 أقرب الحجوزات القادمة</div>
+          <div class="table-wrap" style="border:none;">
+            <table class="mini-table" id="upcomingBookingsTable"></table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOOKINGS -->
+    <section class="page" id="page-bookings">
+      <div class="topbar">
+        <div>
+          <h2>حجوزات المختبر</h2>
+          <p>إدارة حجوزات المختبرات الرقمية وكشف التعارضات</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn" id="addBookingBtn">+ إضافة حجز جديد</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input type="text" id="bookingSearch" placeholder="ابحث باسم المعلم أو المختبر أو الصف...">
+        <select id="filterDay"><option value="">كل الأيام</option></select>
+        <select id="filterPeriod"><option value="">كل الحصص</option></select>
+        <select id="filterLab"><option value="">كل المختبرات</option></select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="bookingsTable"></table>
+      </div>
+    </section>
+
+    <!-- DEVICES -->
+    <section class="page" id="page-devices">
+      <div class="topbar">
+        <div>
+          <h2>الأجهزة</h2>
+          <p>إدارة أجهزة ومعدات المختبرات الرقمية</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn" id="addDeviceBtn">+ إضافة جهاز</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input type="text" id="deviceSearch" placeholder="ابحث برقم الجهاز أو نوعه أو موقعه...">
+        <select id="filterDeviceStatus"><option value="">كل الحالات</option></select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="devicesTable"></table>
+      </div>
+    </section>
+
+    <!-- MAINTENANCE -->
+    <section class="page" id="page-maintenance">
+      <div class="topbar">
+        <div>
+          <h2>الصيانة</h2>
+          <p>بلاغات الأعطال ومتابعة الصيانة</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn" id="addMaintBtn">+ إضافة بلاغ جديد</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input type="text" id="maintSearch" placeholder="ابحث برقم الجهاز أو العطل أو المسؤول...">
+        <select id="filterMaintStatus"><option value="">كل الحالات</option></select>
+        <select id="filterMaintPriority"><option value="">كل الأولويات</option></select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="maintTable"></table>
+      </div>
+    </section>
+
+    <!-- LOANS -->
+    <section class="page" id="page-loans">
+      <div class="topbar">
+        <div>
+          <h2>الإعارات</h2>
+          <p>متابعة الأجهزة المُعارة ومواعيد إرجاعها</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn" id="addLoanBtn">+ إضافة إعارة جديدة</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input type="text" id="loanSearch" placeholder="ابحث باسم المستعير أو رقم الجهاز...">
+        <select id="filterLoanStatus"><option value="">كل الحالات</option></select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="loansTable"></table>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section class="page" id="page-reports">
+      <div class="topbar">
+        <div>
+          <h2>التقارير</h2>
+          <p>تقارير جاهزة للطباعة والمشاركة</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn secondary" id="printReportBtn">🖨️ طباعة التقرير</button>
+        </div>
+      </div>
+      <div class="report-tabs" id="reportTabs">
+        <button class="rtab active" data-report="down">الأجهزة المعطلة</button>
+        <button class="rtab" data-report="bookings">الحجوزات</button>
+        <button class="rtab" data-report="overdue">الإعارات المتأخرة</button>
+        <button class="rtab" data-report="openmaint">بلاغات الصيانة المفتوحة</button>
+      </div>
+      <div id="report-print-area"></div>
+    </section>
+
+    <footer class="credit">مدرسة إنجاز — نظام المختبر الذكي — جميع البيانات محفوظة محليًا في متصفحك</footer>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modalTitle">عنوان</h3>
+      <button class="modal-close" id="modalCloseBtn">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-msg" id="formMsg"></div>
+      <div class="form-grid" id="modalForm"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn secondary" id="modalCancelBtn">إلغاء</button>
+      <button class="btn" id="modalSaveBtn">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* =========================================================
+   DEFAULT DATA (extracted from the uploaded Excel workbook)
+   ========================================================= */
+const DEFAULT_DATA = {"devices": [{"رقم الجهاز": "PC-001", "نوع الجهاز": "حاسوب مكتبي", "الماركة/الطراز": "Dell OptiPlex 7090", "المختبر/الموقع": "مختبر الحاسوب 1", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2023-09-01", "آخر صيانة": "2026-05-20", "موعد الصيانة القادمة": "2026-11-20", "نظام التشغيل/الإصدار": "Windows 11", "البرامج الأساسية": "Office, Scratch, Python", "الرقم التسلسلي": "DL7090-001", "الأولوية": "عادية", "ملاحظات": null}, {"رقم الجهاز": "PC-002", "نوع الجهاز": "حاسوب مكتبي", "الماركة/الطراز": "Dell OptiPlex 7090", "المختبر/الموقع": "مختبر الحاسوب 1", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2023-09-01", "آخر صيانة": "2026-05-20", "موعد الصيانة القادمة": "2026-11-20", "نظام التشغيل/الإصدار": "Windows 11", "البرامج الأساسية": "Office, Scratch, Python", "الرقم التسلسلي": "DL7090-002", "الأولوية": "عادية", "ملاحظات": null}, {"رقم الجهاز": "PC-003", "نوع الجهاز": "حاسوب مكتبي", "الماركة/الطراز": "Dell OptiPlex 7090", "المختبر/الموقع": "مختبر الحاسوب 1", "الحالة": "بحاجة صيانة", "متاح للاستخدام": "لا", "المستخدم الحالي": "قسم الصيانة", "تاريخ الشراء": "2023-09-01", "آخر صيانة": "2026-07-10", "موعد الصيانة القادمة": "2026-08-10", "نظام التشغيل/الإصدار": "Windows 11", "البرامج الأساسية": "Office, Scratch", "الرقم التسلسلي": "DL7090-003", "الأولوية": "عالية", "ملاحظات": "مشكلة في مزود الطاقة"}, {"رقم الجهاز": "PC-004", "نوع الجهاز": "حاسوب مكتبي", "الماركة/الطراز": "HP ProDesk 600", "المختبر/الموقع": "مختبر الحاسوب 1", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2022-08-15", "آخر صيانة": "2026-04-12", "موعد الصيانة القادمة": "2026-10-12", "نظام التشغيل/الإصدار": "Windows 10", "البرامج الأساسية": "Office, Scratch", "الرقم التسلسلي": "HP600-004", "الأولوية": "عادية", "ملاحظات": null}, {"رقم الجهاز": "PC-005", "نوع الجهاز": "حاسوب مكتبي", "الماركة/الطراز": "HP ProDesk 600", "المختبر/الموقع": "مختبر الحاسوب 1", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2022-08-15", "آخر صيانة": "2026-04-12", "موعد الصيانة القادمة": "2026-10-12", "نظام التشغيل/الإصدار": "Windows 10", "البرامج الأساسية": "Office, Scratch", "الرقم التسلسلي": "HP600-005", "الأولوية": "عادية", "ملاحظات": null}, {"رقم الجهاز": "LT-001", "نوع الجهاز": "حاسوب محمول", "الماركة/الطراز": "Lenovo ThinkPad E14", "المختبر/الموقع": "مختبر الحاسوب 2", "الحالة": "مُعار", "متاح للاستخدام": "لا", "المستخدم الحالي": "أحمد الخطيب", "تاريخ الشراء": "2024-01-10", "آخر صيانة": "2026-06-02", "موعد الصيانة القادمة": "2026-12-02", "نظام التشغيل/الإصدار": "Windows 11", "البرامج الأساسية": "Office, Python, Canva", "الرقم التسلسلي": "LNE14-001", "الأولوية": "متوسطة", "ملاحظات": "موعد الإرجاع قريب"}, {"رقم الجهاز": "LT-002", "نوع الجهاز": "حاسوب محمول", "الماركة/الطراز": "Lenovo ThinkPad E14", "المختبر/الموقع": "مختبر الحاسوب 2", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2024-01-10", "آخر صيانة": "2026-06-02", "موعد الصيانة القادمة": "2026-12-02", "نظام التشغيل/الإصدار": "Windows 11", "البرامج الأساسية": "Office, Python, Canva", "الرقم التسلسلي": "LNE14-002", "الأولوية": "عادية", "ملاحظات": null}, {"رقم الجهاز": "LT-003", "نوع الجهاز": "حاسوب محمول", "الماركة/الطراز": "Lenovo ThinkPad E14", "المختبر/الموقع": "مختبر الحاسوب 2", "الحالة": "خارج الخدمة", "متاح للاستخدام": "لا", "المستخدم الحالي": "—", "تاريخ الشراء": "2024-01-10", "آخر صيانة": "2026-03-18", "موعد الصيانة القادمة": "2026-09-18", "نظام التشغيل/الإصدار": "Windows 11", "البرامج الأساسية": "Office", "الرقم التسلسلي": "LNE14-003", "الأولوية": "عالية", "ملاحظات": "كسر في الشاشة"}, {"رقم الجهاز": "PR-001", "نوع الجهاز": "جهاز عرض", "الماركة/الطراز": "Epson EB-X49", "المختبر/الموقع": "قاعة متعددة الأغراض", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2022-10-05", "آخر صيانة": "2026-05-01", "موعد الصيانة القادمة": "2026-11-01", "نظام التشغيل/الإصدار": "—", "البرامج الأساسية": "—", "الرقم التسلسلي": "EPX49-001", "الأولوية": "عادية", "ملاحظات": null}, {"رقم الجهاز": "PR-002", "نوع الجهاز": "جهاز عرض", "الماركة/الطراز": "Epson EB-X49", "المختبر/الموقع": "مختبر الحاسوب 2", "الحالة": "مُعار", "متاح للاستخدام": "لا", "المستخدم الحالي": "سارة محمود", "تاريخ الشراء": "2022-10-05", "آخر صيانة": "2026-05-01", "موعد الصيانة القادمة": "2026-11-01", "نظام التشغيل/الإصدار": "—", "البرامج الأساسية": "—", "الرقم التسلسلي": "EPX49-002", "الأولوية": "متوسطة", "ملاحظات": null}, {"رقم الجهاز": "AR-001", "نوع الجهاز": "Arduino Kit", "الماركة/الطراز": "Arduino Uno Starter Kit", "المختبر/الموقع": "خزانة STEM", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2025-02-12", "آخر صيانة": "2026-06-15", "موعد الصيانة القادمة": "2027-06-15", "نظام التشغيل/الإصدار": "—", "البرامج الأساسية": "Arduino IDE", "الرقم التسلسلي": "ARD-U-001", "الأولوية": "عادية", "ملاحظات": "عدة كاملة"}, {"رقم الجهاز": "AR-002", "نوع الجهاز": "Arduino Kit", "الماركة/الطراز": "Arduino Uno Starter Kit", "المختبر/الموقع": "خزانة STEM", "الحالة": "مُعار", "متاح للاستخدام": "لا", "المستخدم الحالي": "ليان سمير", "تاريخ الشراء": "2025-02-12", "آخر صيانة": "2026-06-15", "موعد الصيانة القادمة": "2027-06-15", "نظام التشغيل/الإصدار": "—", "البرامج الأساسية": "Arduino IDE", "الرقم التسلسلي": "ARD-U-002", "الأولوية": "متوسطة", "ملاحظات": null}, {"رقم الجهاز": "RB-001", "نوع الجهاز": "روبوت تعليمي", "الماركة/الطراز": "LEGO SPIKE Prime", "المختبر/الموقع": "مختبر الروبوت", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2025-09-01", "آخر صيانة": "2026-07-01", "موعد الصيانة القادمة": "2027-01-01", "نظام التشغيل/الإصدار": "—", "البرامج الأساسية": "SPIKE App", "الرقم التسلسلي": "LGSP-001", "الأولوية": "عادية", "ملاحظات": null}, {"رقم الجهاز": "RB-002", "نوع الجهاز": "روبوت تعليمي", "الماركة/الطراز": "LEGO SPIKE Prime", "المختبر/الموقع": "مختبر الروبوت", "الحالة": "بحاجة صيانة", "متاح للاستخدام": "لا", "المستخدم الحالي": "قسم الصيانة", "تاريخ الشراء": "2025-09-01", "آخر صيانة": "2026-07-22", "موعد الصيانة القادمة": "2026-08-22", "نظام التشغيل/الإصدار": "—", "البرامج الأساسية": "SPIKE App", "الرقم التسلسلي": "LGSP-002", "الأولوية": "عالية", "ملاحظات": "مستشعر مسافة لا يعمل"}, {"رقم الجهاز": "PT-001", "نوع الجهاز": "طابعة", "الماركة/الطراز": "HP LaserJet Pro", "المختبر/الموقع": "غرفة المعلمين", "الحالة": "يعمل", "متاح للاستخدام": "نعم", "المستخدم الحالي": "—", "تاريخ الشراء": "2023-03-07", "آخر صيانة": "2026-05-30", "موعد الصيانة القادمة": "2026-11-30", "نظام التشغيل/الإصدار": "—", "البرامج الأساسية": "—", "الرقم التسلسلي": "HPLJ-001", "الأولوية": "عادية", "ملاحظات": "مستوى الحبر 40%"}], "bookings": [{"رقم الحجز": "B-001", "التاريخ": "2026-08-02", "اليوم": "الأحد", "الحصة": "الأولى", "المعلم": "سارة محمود", "المادة": "مهارات رقمية", "الصف": "السابع", "الشعبة": "أ", "المختبر": "مختبر الحاسوب 1", "عدد الطلاب": 24, "البرنامج/الأجهزة المطلوبة": "Scratch", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-002", "التاريخ": "2026-08-02", "اليوم": "الأحد", "الحصة": "الثانية", "المعلم": "أحمد الخطيب", "المادة": "مهارات رقمية", "الصف": "الثامن", "الشعبة": "ب", "المختبر": "مختبر الحاسوب 2", "عدد الطلاب": 20, "البرنامج/الأجهزة المطلوبة": "Python", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-003", "التاريخ": "2026-08-02", "اليوم": "الأحد", "الحصة": "الثالثة", "المعلم": "ليان سمير", "المادة": "علوم", "الصف": "التاسع", "الشعبة": "أ", "المختبر": "مختبر الروبوت", "عدد الطلاب": 18, "البرنامج/الأجهزة المطلوبة": "LEGO SPIKE", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-004", "التاريخ": "2026-08-02", "اليوم": "الأحد", "الحصة": "الرابعة", "المعلم": "محمود عادل", "المادة": "مهارات رقمية", "الصف": "العاشر", "الشعبة": "أ", "المختبر": "مختبر الحاسوب 1", "عدد الطلاب": 26, "البرنامج/الأجهزة المطلوبة": "Excel", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-005", "التاريخ": "2026-08-03", "اليوم": "الإثنين", "الحصة": "الثانية", "المعلم": "سارة محمود", "المادة": "مهارات رقمية", "الصف": "السابع", "الشعبة": "ب", "المختبر": "مختبر الحاسوب 1", "عدد الطلاب": 25, "البرنامج/الأجهزة المطلوبة": "Scratch", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-006", "التاريخ": "2026-08-03", "اليوم": "الإثنين", "الحصة": "الثانية", "المعلم": "ليان سمير", "المادة": "تكنولوجيا", "الصف": "الثامن", "الشعبة": "أ", "المختبر": "مختبر الحاسوب 1", "عدد الطلاب": 22, "البرنامج/الأجهزة المطلوبة": "Tinkercad", "حالة الحجز": "قيد المراجعة"}, {"رقم الحجز": "B-007", "التاريخ": "2026-08-03", "اليوم": "الإثنين", "الحصة": "الثالثة", "المعلم": "أحمد الخطيب", "المادة": "مهارات رقمية", "الصف": "التاسع", "الشعبة": "ب", "المختبر": "مختبر الحاسوب 2", "عدد الطلاب": 21, "البرنامج/الأجهزة المطلوبة": "Canva", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-008", "التاريخ": "2026-08-04", "اليوم": "الثلاثاء", "الحصة": "الأولى", "المعلم": "محمود عادل", "المادة": "مهارات رقمية", "الصف": "العاشر", "الشعبة": "ب", "المختبر": "مختبر الحاسوب 2", "عدد الطلاب": 23, "البرنامج/الأجهزة المطلوبة": "Python", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-009", "التاريخ": "2026-08-04", "اليوم": "الثلاثاء", "الحصة": "الرابعة", "المعلم": "سارة محمود", "المادة": "مهارات رقمية", "الصف": "الثامن", "الشعبة": "أ", "المختبر": "مختبر الحاسوب 1", "عدد الطلاب": 24, "البرنامج/الأجهزة المطلوبة": "PowerPoint", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-010", "التاريخ": "2026-08-05", "اليوم": "الأربعاء", "الحصة": "الثالثة", "المعلم": "ليان سمير", "المادة": "STEM", "الصف": "التاسع", "الشعبة": "أ", "المختبر": "مختبر الروبوت", "عدد الطلاب": 18, "البرنامج/الأجهزة المطلوبة": "Arduino", "حالة الحجز": "مؤكد"}, {"رقم الحجز": "B-011", "التاريخ": "2026-08-05", "اليوم": "الأربعاء", "الحصة": "الرابعة", "المعلم": "أحمد الخطيب", "المادة": "مهارات رقمية", "الصف": "السابع", "الشعبة": "أ", "المختبر": "مختبر الحاسوب 2", "عدد الطلاب": 20, "البرنامج/الأجهزة المطلوبة": "Scratch", "حالة الحجز": "ملغي"}, {"رقم الحجز": "B-012", "التاريخ": "2026-08-06", "اليوم": "الخميس", "الحصة": "الثانية", "المعلم": "محمود عادل", "المادة": "مهارات رقمية", "الصف": "العاشر", "الشعبة": "أ", "المختبر": "مختبر الحاسوب 1", "عدد الطلاب": 26, "البرنامج/الأجهزة المطلوبة": "Excel", "حالة الحجز": "مؤكد"}], "maintenance": [{"رقم البلاغ": "M-001", "رقم الجهاز": "PC-003", "نوع الجهاز": "حاسوب مكتبي", "العطل": "الجهاز لا يعمل - مزود طاقة", "تاريخ البلاغ": "2026-07-10", "الأولوية": "عالية", "المسؤول": "قسم الصيانة", "حالة الصيانة": "قيد الإصلاح", "تاريخ الإغلاق": null, "التكلفة التقديرية": 35, "ملاحظات": "تم طلب قطعة بديلة"}, {"رقم البلاغ": "M-002", "رقم الجهاز": "LT-003", "نوع الجهاز": "حاسوب محمول", "العطل": "كسر في الشاشة", "تاريخ البلاغ": "2026-07-15", "الأولوية": "عالية", "المسؤول": "شركة خارجية", "حالة الصيانة": "بانتظار الموافقة", "تاريخ الإغلاق": null, "التكلفة التقديرية": 120, "ملاحظات": "بانتظار موافقة الإدارة"}, {"رقم البلاغ": "M-003", "رقم الجهاز": "RB-002", "نوع الجهاز": "روبوت تعليمي", "العطل": "مستشعر المسافة لا يستجيب", "تاريخ البلاغ": "2026-07-22", "الأولوية": "عالية", "المسؤول": "منسق المختبر", "حالة الصيانة": "قيد الفحص", "تاريخ الإغلاق": null, "التكلفة التقديرية": 25, "ملاحظات": null}, {"رقم البلاغ": "M-004", "رقم الجهاز": "PR-001", "نوع الجهاز": "جهاز عرض", "العطل": "ضعف في الإضاءة", "تاريخ البلاغ": "2026-06-10", "الأولوية": "متوسطة", "المسؤول": "قسم الصيانة", "حالة الصيانة": "مغلق", "تاريخ الإغلاق": "2026-06-14", "التكلفة التقديرية": 18, "ملاحظات": "تم تنظيف العدسة"}, {"رقم البلاغ": "M-005", "رقم الجهاز": "PT-001", "نوع الجهاز": "طابعة", "العطل": "انحشار ورق متكرر", "تاريخ البلاغ": "2026-07-05", "الأولوية": "منخفضة", "المسؤول": "فني المدرسة", "حالة الصيانة": "مغلق", "تاريخ الإغلاق": "2026-07-06", "التكلفة التقديرية": 0, "ملاحظات": "تمت المعالجة داخليًا"}], "loans": [{"رقم الإعارة": "L-001", "رقم الجهاز": "LT-001", "نوع الجهاز": "حاسوب محمول", "اسم المستعير": "أحمد الخطيب", "الفئة": "معلم", "تاريخ الاستعارة": "2026-07-28", "موعد الإرجاع": "2026-08-03", "تاريخ الإرجاع الفعلي": null, "الحالة": "قيد الإعارة", "ملاحظات": "لإعداد عرض تدريبي"}, {"رقم الإعارة": "L-002", "رقم الجهاز": "PR-002", "نوع الجهاز": "جهاز عرض", "اسم المستعير": "سارة محمود", "الفئة": "معلمة", "تاريخ الاستعارة": "2026-07-30", "موعد الإرجاع": "2026-08-01", "تاريخ الإرجاع الفعلي": null, "الحالة": "متأخرة", "ملاحظات": "فعالية مدرسية"}, {"رقم الإعارة": "L-003", "رقم الجهاز": "AR-002", "نوع الجهاز": "Arduino Kit", "اسم المستعير": "ليان سمير", "الفئة": "طالبة", "تاريخ الاستعارة": "2026-07-25", "موعد الإرجاع": "2026-07-30", "تاريخ الإرجاع الفعلي": null, "الحالة": "متأخرة", "ملاحظات": "مشروع STEM"}, {"رقم الإعارة": "L-004", "رقم الجهاز": "LT-002", "نوع الجهاز": "حاسوب محمول", "اسم المستعير": "محمود عادل", "الفئة": "معلم", "تاريخ الاستعارة": "2026-07-20", "موعد الإرجاع": "2026-07-24", "تاريخ الإرجاع الفعلي": "2026-07-24", "الحالة": "مُعادة", "ملاحظات": null}, {"رقم الإعارة": "L-005", "رقم الجهاز": "RB-001", "نوع الجهاز": "روبوت تعليمي", "اسم المستعير": "فريق الروبوت", "الفئة": "طلاب", "تاريخ الاستعارة": "2026-07-15", "موعد الإرجاع": "2026-07-22", "تاريخ الإرجاع الفعلي": "2026-07-21", "الحالة": "مُعادة", "ملاحظات": "أعيد مبكرًا"}], "labs": [{"اسم المختبر": "مختبر الحاسوب 1", "السعة": 28, "عدد الأجهزة الكلي": 5, "عدد الأجهزة العاملة": 4, "جهاز عرض": "نعم", "إنترنت": "نعم", "البرامج المتاحة": "Office, Scratch, Python", "المسؤول": "سارة محمود", "ساعات الدوام": "08:00-14:00", "ملاحظات": "يوجد جهاز واحد بحاجة صيانة"}, {"اسم المختبر": "مختبر الحاسوب 2", "السعة": 24, "عدد الأجهزة الكلي": 3, "عدد الأجهزة العاملة": 2, "جهاز عرض": "نعم", "إنترنت": "نعم", "البرامج المتاحة": "Office, Python, Canva, Tinkercad", "المسؤول": "أحمد الخطيب", "ساعات الدوام": "08:00-14:00", "ملاحظات": "حاسوب واحد خارج الخدمة"}, {"اسم المختبر": "مختبر الروبوت", "السعة": 20, "عدد الأجهزة الكلي": 2, "عدد الأجهزة العاملة": 1, "جهاز عرض": "لا", "إنترنت": "نعم", "البرامج المتاحة": "SPIKE App, Arduino IDE", "المسؤول": "ليان سمير", "ساعات الدوام": "09:00-13:00", "ملاحظات": "روبوت واحد بحاجة صيانة"}, {"اسم المختبر": "قاعة متعددة الأغراض", "السعة": 60, "عدد الأجهزة الكلي": 0, "عدد الأجهزة العاملة": 0, "جهاز عرض": "نعم", "إنترنت": "نعم", "البرامج المتاحة": "—", "المسؤول": "الإدارة", "ساعات الدوام": "08:00-15:00", "ملاحظات": "للعروض والفعاليات"}]};
+
+/* =========================================================
+   CONSTANTS
+   ========================================================= */
+const STORAGE_KEY = 'smartLabSystemData_v1';
+const DAYS = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس'];
+const PERIODS = ['الأولى','الثانية','الثالثة','الرابعة'];
+const BOOKING_STATUS = ['مؤكد','قيد المراجعة','ملغي'];
+const DEVICE_STATUS = ['يعمل','بحاجة صيانة','خارج الخدمة','مُعار'];
+const DEVICE_PRIORITY = ['عادية','متوسطة','عالية'];
+const MAINT_PRIORITY = ['عالية','متوسطة','منخفضة'];
+const MAINT_STATUS = ['قيد الفحص','قيد الإصلاح','بانتظار الموافقة','مغلق'];
+const LOAN_STATUS = ['قيد الإعارة','متأخرة','مُعادة'];
+
+const SHEET_TITLES = {
+  devices: 'سجل الأجهزة والمعدات الرقمية',
+  bookings: 'جدول حجوزات المختبرات الرقمية',
+  maintenance: 'سجل الأعطال والصيانة',
+  loans: 'سجل إعارة الأجهزة',
+  labs: 'بيانات المختبرات الرقمية',
+  dashboard: 'لوحة مؤشرات نظام المختبرات الرقمية'
+};
+const SHEET_NAMES = {
+  devices: 'الأجهزة',
+  bookings: 'حجوزات المختبر',
+  maintenance: 'الصيانة',
+  loans: 'الإعارات',
+  labs: 'المختبرات',
+  dashboard: 'لوحة المؤشرات'
+};
+const HEADERS = {
+  devices: ['رقم الجهاز','نوع الجهاز','الماركة/الطراز','المختبر/الموقع','الحالة','متاح للاستخدام','المستخدم الحالي','تاريخ الشراء','آخر صيانة','موعد الصيانة القادمة','نظام التشغيل/الإصدار','البرامج الأساسية','الرقم التسلسلي','الأولوية','ملاحظات'],
+  bookings: ['رقم الحجز','التاريخ','اليوم','الحصة','المعلم','المادة','الصف','الشعبة','المختبر','عدد الطلاب','البرنامج/الأجهزة المطلوبة','حالة الحجز','ملاحظات'],
+  maintenance: ['رقم البلاغ','رقم الجهاز','نوع الجهاز','العطل','تاريخ البلاغ','الأولوية','المسؤول','حالة الصيانة','تاريخ الإغلاق','التكلفة التقديرية','ملاحظات'],
+  loans: ['رقم الإعارة','رقم الجهاز','نوع الجهاز','اسم المستعير','الفئة','تاريخ الاستعارة','موعد الإرجاع','تاريخ الإرجاع الفعلي','الحالة','ملاحظات'],
+  labs: ['اسم المختبر','السعة','عدد الأجهزة الكلي','عدد الأجهزة العاملة','جهاز عرض','إنترنت','البرامج المتاحة','المسؤول','ساعات الدوام','ملاحظات']
+};
+const IDFIELD = {devices:'رقم الجهاز', bookings:'رقم الحجز', maintenance:'رقم البلاغ', loans:'رقم الإعارة', labs:'اسم المختبر'};
+const IDPREFIX = {bookings:'B', maintenance:'M', loans:'L'};
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let db = loadData();
+let activeSection = 'dashboard';
+let activeReport = 'down';
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && parsed.devices) return parsed;
+    }
+  }catch(e){ console.warn('تعذرت قراءة البيانات المحلية', e); }
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+function esc(v){
+  if(v===null || v===undefined) return '';
+  return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(v){
+  if(!v) return '—';
+  return v;
+}
+function nextId(rows, idField, prefix){
+  let max = 0;
+  rows.forEach(r=>{
+    const m = String(r[idField]||'').match(/(\d+)\s*$/);
+    if(m){ const n = parseInt(m[1],10); if(n>max) max = n; }
+  });
+  return prefix + '-' + String(max+1).padStart(3,'0');
+}
+function labsNames(){ return db.labs.map(l=>l['اسم المختبر']); }
+function deviceIds(){ return db.devices.map(d=>d['رقم الجهاز']); }
+
+function toast(msg, type){
+  type = type || 'success';
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  const icon = type==='success' ? '✅' : type==='error' ? '⚠️' : 'ℹ️';
+  el.innerHTML = '<span>'+icon+'</span><span>'+esc(msg)+'</span>';
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 3200);
+}
+
+function isLoanOverdue(loan){
+  if(loan['تاريخ الإرجاع الفعلي']) return false;
+  if(!loan['موعد الإرجاع']) return false;
+  return loan['موعد الإرجاع'] < todayStr();
+}
+function recomputeLoanStatuses(){
+  db.loans.forEach(l=>{
+    if(l['تاريخ الإرجاع الفعلي']){ l['الحالة'] = 'مُعادة'; }
+    else if(isLoanOverdue(l)){ l['الحالة'] = 'متأخرة'; }
+    else { l['الحالة'] = 'قيد الإعارة'; }
+  });
+}
+
+function findBookingConflict(booking, excludeId){
+  return db.bookings.find(b =>
+    b['رقم الحجز'] !== excludeId &&
+    b['التاريخ'] === booking['التاريخ'] &&
+    b['الحصة'] === booking['الحصة'] &&
+    b['المختبر'] === booking['المختبر'] &&
+    b['حالة الحجز'] !== 'ملغي'
+  );
+}
+function suggestAlternativeLab(booking, excludeId){
+  const names = labsNames();
+  for(const lab of names){
+    if(lab === booking['المختبر']) continue;
+    const clash = db.bookings.find(b =>
+      b['رقم الحجز'] !== excludeId &&
+      b['التاريخ'] === booking['التاريخ'] &&
+      b['الحصة'] === booking['الحصة'] &&
+      b['المختبر'] === lab &&
+      b['حالة الحجز'] !== 'ملغي'
+    );
+    if(!clash) return lab;
+  }
+  return null;
+}
+function findAllBookingConflicts(){
+  const map = {};
+  const conflicts = [];
+  db.bookings.filter(b=>b['حالة الحجز']!=='ملغي').forEach(b=>{
+    const key = b['التاريخ']+'|'+b['الحصة']+'|'+b['المختبر'];
+    if(!map[key]) map[key] = [];
+    map[key].push(b);
+  });
+  Object.keys(map).forEach(k=>{
+    if(map[k].length > 1){
+      const [date, period, lab] = k.split('|');
+      conflicts.push({date, period, lab, items: map[k]});
+    }
+  });
+  return conflicts;
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+document.getElementById('navMenu').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.nav-item');
+  if(!btn) return;
+  showSection(btn.dataset.section);
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+});
+function showSection(name){
+  activeSection = name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.section===name));
+  renderAll();
+}
+document.getElementById('menuToggle').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+});
+document.getElementById('overlay').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+});
+
+/* =========================================================
+   RENDER: DASHBOARD
+   ========================================================= */
+function renderDashboard(){
+  const totalDevices = db.devices.length;
+  const workingDevices = db.devices.filter(d=>d['الحالة']==='يعمل').length;
+  const downDevices = db.devices.filter(d=>d['الحالة']==='بحاجة صيانة' || d['الحالة']==='خارج الخدمة').length;
+  const bookingsCount = db.bookings.length;
+  recomputeLoanStatuses();
+  const overdueLoans = db.loans.filter(isLoanOverdue).length;
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card c-total"><div class="stat-icon">💻</div><div class="stat-val">${totalDevices}</div><div class="stat-label">إجمالي الأجهزة</div></div>
+    <div class="stat-card c-ok"><div class="stat-icon">✅</div><div class="stat-val">${workingDevices}</div><div class="stat-label">أجهزة عاملة</div></div>
+    <div class="stat-card c-down"><div class="stat-icon">🛠️</div><div class="stat-val">${downDevices}</div><div class="stat-label">معطلة / بحاجة صيانة</div></div>
+    <div class="stat-card c-book"><div class="stat-icon">📅</div><div class="stat-val">${bookingsCount}</div><div class="stat-label">إجمالي الحجوزات</div></div>
+    <div class="stat-card c-late"><div class="stat-icon">⏰</div><div class="stat-val">${overdueLoans}</div><div class="stat-label">إعارات متأخرة</div></div>
+  `;
+
+  const alerts = [];
+  const downList = db.devices.filter(d=>d['الحالة']==='بحاجة صيانة' || d['الحالة']==='خارج الخدمة');
+  if(downList.length){
+    alerts.push({type:'warn', icon:'🛠️', title:'أجهزة بحاجة متابعة ('+downList.length+')', detail: downList.map(d=>d['رقم الجهاز']).join('، ')});
+  }
+  const overdueList = db.loans.filter(isLoanOverdue);
+  if(overdueList.length){
+    alerts.push({type:'danger', icon:'⏰', title:'إعارات متأخرة ('+overdueList.length+')', detail: overdueList.map(l=>l['رقم الجهاز']+' - '+l['اسم المستعير']).join('، ')});
+  }
+  const critMaint = db.maintenance.filter(m=>m['الأولوية']==='عالية' && m['حالة الصيانة']!=='مغلق');
+  if(critMaint.length){
+    alerts.push({type:'danger', icon:'🚨', title:'بلاغات صيانة حرجة مفتوحة ('+critMaint.length+')', detail: critMaint.map(m=>m['رقم البلاغ']+' - '+m['العطل']).join(' | ')});
+  }
+  const conflicts = findAllBookingConflicts();
+  if(conflicts.length){
+    conflicts.forEach(c=>{
+      alerts.push({type:'danger', icon:'⚠️', title:'تعارض في الحجز: '+c.lab, detail: 'بتاريخ '+c.date+' - الحصة '+c.period+' (محجوز '+c.items.length+' مرات: '+c.items.map(i=>i['المعلم']).join('، ')+')'});
+    });
+  }
+  if(!alerts.length){
+    alerts.push({type:'ok', icon:'🎉', title:'لا توجد تنبيهات حالية', detail:'جميع الأنظمة تعمل بشكل طبيعي.'});
+  }
+  document.getElementById('alertsBox').innerHTML = alerts.map(a=>`
+    <div class="alert-item ${a.type}"><span class="alert-ic">${a.icon}</span><div><b>${esc(a.title)}</b>${esc(a.detail)}</div></div>
+  `).join('');
+
+  const upcoming = db.bookings
+    .filter(b=>b['حالة الحجز']!=='ملغي' && b['التاريخ']>=todayStr())
+    .sort((a,b)=> (a['التاريخ']+a['الحصة']).localeCompare(b['التاريخ']+b['الحصة']))
+    .slice(0,6);
+  const tbl = document.getElementById('upcomingBookingsTable');
+  if(!upcoming.length){
+    tbl.innerHTML = '<tr><td class="empty-state">لا توجد حجوزات قادمة</td></tr>';
+  }else{
+    tbl.innerHTML = '<thead><tr><th>التاريخ</th><th>الحصة</th><th>المعلم</th><th>المختبر</th></tr></thead><tbody>'+
+      upcoming.map(b=>`<tr><td>${esc(b['التاريخ'])}</td><td>${esc(b['الحصة'])}</td><td>${esc(b['المعلم'])}</td><td>${esc(b['المختبر'])}</td></tr>`).join('')+
+      '</tbody>';
+  }
+
+  document.getElementById('badgeMaint').textContent = critMaint.length || '';
+  document.getElementById('badgeMaint').style.display = critMaint.length ? 'inline-flex' : 'none';
+  document.getElementById('badgeLoans').textContent = overdueLoans || '';
+  document.getElementById('badgeLoans').style.display = overdueLoans ? 'inline-flex' : 'none';
+}
+
+/* =========================================================
+   RENDER: BOOKINGS
+   ========================================================= */
+function fillSelectOptions(id, options, allLabel){
+  const sel = document.getElementById(id);
+  const current = sel.value;
+  sel.innerHTML = `<option value="">${allLabel}</option>` + options.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');
+  sel.value = current;
+}
+function renderBookings(){
+  fillSelectOptions('filterDay', DAYS, 'كل الأيام');
+  fillSelectOptions('filterPeriod', PERIODS, 'كل الحصص');
+  fillSelectOptions('filterLab', labsNames(), 'كل المختبرات');
+
+  const q = (document.getElementById('bookingSearch').value||'').trim().toLowerCase();
+  const fDay = document.getElementById('filterDay').value;
+  const fPeriod = document.getElementById('filterPeriod').value;
+  const fLab = document.getElementById('filterLab').value;
+
+  const conflictKeys = new Set();
+  findAllBookingConflicts().forEach(c=> c.items.forEach(i=>conflictKeys.add(i['رقم الحجز'])));
+
+  let rows = db.bookings.filter(b=>{
+    if(fDay && b['اليوم']!==fDay) return false;
+    if(fPeriod && b['الحصة']!==fPeriod) return false;
+    if(fLab && b['المختبر']!==fLab) return false;
+    if(q){
+      const hay = [b['المعلم'],b['المختبر'],b['الصف'],b['اليوم'],b['المادة']].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b)=> (a['التاريخ']+a['الحصة']).localeCompare(b['التاريخ']+b['الحصة']));
+
+  const table = document.getElementById('bookingsTable');
+  if(!rows.length){
+    table.innerHTML = '<tbody><tr><td class="empty-state">لا توجد نتائج مطابقة</td></tr></tbody>';
+    return;
+  }
+  table.innerHTML = `<thead><tr>
+    <th>رقم الحجز</th><th>التاريخ</th><th>اليوم</th><th>الحصة</th><th>المعلم</th><th>المادة</th>
+    <th>الصف/الشعبة</th><th>المختبر</th><th>الطلاب</th><th>الحالة</th><th>إجراءات</th>
+  </tr></thead><tbody>` + rows.map(b=>{
+    const isConflict = conflictKeys.has(b['رقم الحجز']) && b['حالة الحجز']!=='ملغي';
+    const statusBadge = b['حالة الحجز']==='مؤكد' ? 'ok' : b['حالة الحجز']==='ملغي' ? 'muted' : 'warn';
+    return `<tr class="${isConflict?'row-critical':''}">
+      <td>${esc(b['رقم الحجز'])}</td>
+      <td>${esc(b['التاريخ'])}</td>
+      <td>${esc(b['اليوم'])}</td>
+      <td>${esc(b['الحصة'])}</td>
+      <td>${esc(b['المعلم'])}</td>
+      <td>${esc(b['المادة'])}</td>
+      <td>${esc(b['الصف'])} / ${esc(b['الشعبة'])}</td>
+      <td>${esc(b['المختبر'])} ${isConflict?'<span class="badge danger">تعارض</span>':''}</td>
+      <td>${esc(b['عدد الطلاب'])}</td>
+      <td><span class="badge ${statusBadge}">${esc(b['حالة الحجز'])}</span></td>
+      <td class="actions-cell">
+        <button class="icon-btn" onclick="openBookingModal('${esc(b['رقم الحجز'])}')" title="تعديل">✏️</button>
+        <button class="icon-btn del" onclick="deleteRow('bookings','${esc(b['رقم الحجز'])}')" title="حذف">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('') + '</tbody>';
+}
+['bookingSearch','filterDay','filterPeriod','filterLab'].forEach(id=>{
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', renderBookings) && el.addEventListener('change', renderBookings);
+  });
+});
+
+/* =========================================================
+   RENDER: DEVICES
+   ========================================================= */
+function deviceBadgeClass(status){
+  if(status==='يعمل') return 'ok';
+  if(status==='بحاجة صيانة') return 'warn';
+  if(status==='خارج الخدمة') return 'danger';
+  if(status==='مُعار') return 'info';
+  return 'muted';
+}
+function renderDevices(){
+  fillSelectOptions('filterDeviceStatus', DEVICE_STATUS, 'كل الحالات');
+  const q = (document.getElementById('deviceSearch').value||'').trim().toLowerCase();
+  const fStatus = document.getElementById('filterDeviceStatus').value;
+
+  let rows = db.devices.filter(d=>{
+    if(fStatus && d['الحالة']!==fStatus) return false;
+    if(q){
+      const hay = [d['رقم الجهاز'],d['نوع الجهاز'],d['المختبر/الموقع'],d['الماركة/الطراز']].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const table = document.getElementById('devicesTable');
+  if(!rows.length){
+    table.innerHTML = '<tbody><tr><td class="empty-state">لا توجد نتائج مطابقة</td></tr></tbody>';
+    return;
+  }
+  table.innerHTML = `<thead><tr>
+    <th>رقم الجهاز</th><th>النوع</th><th>الماركة/الطراز</th><th>الموقع</th><th>الحالة</th>
+    <th>متاح</th><th>المستخدم الحالي</th><th>موعد الصيانة القادمة</th><th>الأولوية</th><th>إجراءات</th>
+  </tr></thead><tbody>` + rows.map(d=>`
+    <tr>
+      <td>${esc(d['رقم الجهاز'])}</td>
+      <td>${esc(d['نوع الجهاز'])}</td>
+      <td>${esc(d['الماركة/الطراز'])}</td>
+      <td>${esc(d['المختبر/الموقع'])}</td>
+      <td><span class="badge ${deviceBadgeClass(d['الحالة'])}">${esc(d['الحالة'])}</span></td>
+      <td>${esc(d['متاح للاستخدام'])}</td>
+      <td>${esc(d['المستخدم الحالي'])}</td>
+      <td>${esc(d['موعد الصيانة القادمة'])}</td>
+      <td>${esc(d['الأولوية'])}</td>
+      <td class="actions-cell">
+        <button class="icon-btn" onclick="openDeviceModal('${esc(d['رقم الجهاز'])}')" title="تعديل">✏️</button>
+        <button class="icon-btn del" onclick="deleteRow('devices','${esc(d['رقم الجهاز'])}')" title="حذف">🗑️</button>
+      </td>
+    </tr>`).join('') + '</tbody>';
+}
+
+/* =========================================================
+   RENDER: MAINTENANCE
+   ========================================================= */
+const PRIORITY_ORDER = {'عالية':0,'متوسطة':1,'منخفضة':2};
+function renderMaintenance(){
+  fillSelectOptions('filterMaintStatus', MAINT_STATUS, 'كل الحالات');
+  fillSelectOptions('filterMaintPriority', MAINT_PRIORITY, 'كل الأولويات');
+  const q = (document.getElementById('maintSearch').value||'').trim().toLowerCase();
+  const fStatus = document.getElementById('filterMaintStatus').value;
+  const fPriority = document.getElementById('filterMaintPriority').value;
+
+  let rows = db.maintenance.filter(m=>{
+    if(fStatus && m['حالة الصيانة']!==fStatus) return false;
+    if(fPriority && m['الأولوية']!==fPriority) return false;
+    if(q){
+      const hay = [m['رقم الجهاز'],m['العطل'],m['المسؤول'],m['رقم البلاغ']].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b)=> (PRIORITY_ORDER[a['الأولوية']]??3) - (PRIORITY_ORDER[b['الأولوية']]??3) || String(b['تاريخ البلاغ']).localeCompare(String(a['تاريخ البلاغ'])));
+
+  const table = document.getElementById('maintTable');
+  if(!rows.length){
+    table.innerHTML = '<tbody><tr><td class="empty-state">لا توجد نتائج مطابقة</td></tr></tbody>';
+    return;
+  }
+  table.innerHTML = `<thead><tr>
+    <th>رقم البلاغ</th><th>رقم الجهاز</th><th>العطل</th><th>تاريخ البلاغ</th><th>الأولوية</th>
+    <th>المسؤول</th><th>الحالة</th><th>التكلفة</th><th>إجراءات</th>
+  </tr></thead><tbody>` + rows.map(m=>{
+    const critical = m['الأولوية']==='عالية' && m['حالة الصيانة']!=='مغلق';
+    const prBadge = m['الأولوية']==='عالية' ? 'danger' : m['الأولوية']==='متوسطة' ? 'warn' : 'muted';
+    const stBadge = m['حالة الصيانة']==='مغلق' ? 'ok' : 'info';
+    return `<tr class="${critical?'row-critical':''}">
+      <td>${esc(m['رقم البلاغ'])}</td>
+      <td>${esc(m['رقم الجهاز'])}</td>
+      <td>${esc(m['العطل'])}</td>
+      <td>${esc(m['تاريخ البلاغ'])}</td>
+      <td><span class="badge ${prBadge}">${esc(m['الأولوية'])}${critical?' 🚨':''}</span></td>
+      <td>${esc(m['المسؤول'])}</td>
+      <td><span class="badge ${stBadge}">${esc(m['حالة الصيانة'])}</span></td>
+      <td>${m['التكلفة التقديرية']!=null? esc(m['التكلفة التقديرية']) : '—'}</td>
+      <td class="actions-cell">
+        <button class="icon-btn" onclick="openMaintModal('${esc(m['رقم البلاغ'])}')" title="تعديل">✏️</button>
+        <button class="icon-btn del" onclick="deleteRow('maintenance','${esc(m['رقم البلاغ'])}')" title="حذف">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('') + '</tbody>';
+}
+
+/* =========================================================
+   RENDER: LOANS
+   ========================================================= */
+function loanBadgeClass(status){
+  if(status==='قيد الإعارة') return 'info';
+  if(status==='متأخرة') return 'danger';
+  if(status==='مُعادة') return 'ok';
+  return 'muted';
+}
+function renderLoans(){
+  recomputeLoanStatuses();
+  fillSelectOptions('filterLoanStatus', LOAN_STATUS, 'كل الحالات');
+  const q = (document.getElementById('loanSearch').value||'').trim().toLowerCase();
+  const fStatus = document.getElementById('filterLoanStatus').value;
+
+  let rows = db.loans.filter(l=>{
+    if(fStatus && l['الحالة']!==fStatus) return false;
+    if(q){
+      const hay = [l['اسم المستعير'],l['رقم الجهاز'],l['نوع الجهاز']].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b)=> String(b['تاريخ الاستعارة']).localeCompare(String(a['تاريخ الاستعارة'])));
+
+  const table = document.getElementById('loansTable');
+  if(!rows.length){
+    table.innerHTML = '<tbody><tr><td class="empty-state">لا توجد نتائج مطابقة</td></tr></tbody>';
+    return;
+  }
+  table.innerHTML = `<thead><tr>
+    <th>رقم الإعارة</th><th>رقم الجهاز</th><th>المستعير</th><th>الفئة</th><th>تاريخ الاستعارة</th>
+    <th>موعد الإرجاع</th><th>تاريخ الإرجاع الفعلي</th><th>الحالة</th><th>إجراءات</th>
+  </tr></thead><tbody>` + rows.map(l=>`
+    <tr class="${l['الحالة']==='متأخرة'?'row-critical':''}">
+      <td>${esc(l['رقم الإعارة'])}</td>
+      <td>${esc(l['رقم الجهاز'])}</td>
+      <td>${esc(l['اسم المستعير'])}</td>
+      <td>${esc(l['الفئة'])}</td>
+      <td>${esc(l['تاريخ الاستعارة'])}</td>
+      <td>${esc(l['موعد الإرجاع'])}</td>
+      <td>${l['تاريخ الإرجاع الفعلي'] ? esc(l['تاريخ الإرجاع الفعلي']) : '—'}</td>
+      <td><span class="badge ${loanBadgeClass(l['الحالة'])}">${esc(l['الحالة'])}</span></td>
+      <td class="actions-cell">
+        ${l['الحالة']!=='مُعادة' ? `<button class="icon-btn" onclick="registerReturn('${esc(l['رقم الإعارة'])}')" title="تسجيل الإرجاع">↩️</button>` : ''}
+        <button class="icon-btn" onclick="openLoanModal('${esc(l['رقم الإعارة'])}')" title="تعديل">✏️</button>
+        <button class="icon-btn del" onclick="deleteRow('loans','${esc(l['رقم الإعارة'])}')" title="حذف">🗑️</button>
+      </td>
+    </tr>`).join('') + '</tbody>';
+}
+function registerReturn(id){
+  const loan = db.loans.find(l=>l['رقم الإعارة']===id);
+  if(!loan) return;
+  loan['تاريخ الإرجاع الفعلي'] = todayStr();
+  loan['الحالة'] = 'مُعادة';
+  const device = db.devices.find(d=>d['رقم الجهاز']===loan['رقم الجهاز']);
+  if(device && device['الحالة']==='مُعار'){ device['الحالة']='يعمل'; device['متاح للاستخدام']='نعم'; device['المستخدم الحالي']='—'; }
+  saveData();
+  renderAll();
+  toast('تم تسجيل إرجاع الجهاز بنجاح', 'success');
+}
+
+/* =========================================================
+   RENDER: REPORTS
+   ========================================================= */
+document.getElementById('reportTabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.rtab');
+  if(!btn) return;
+  activeReport = btn.dataset.report;
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.toggle('active', b===btn));
+  renderReports();
+});
+function renderReports(){
+  const area = document.getElementById('report-print-area');
+  const dateNow = new Date().toLocaleDateString('ar-EG');
+  let title='', rowsHtml='', headHtml='';
+
+  if(activeReport==='down'){
+    title = 'تقرير الأجهزة المعطلة / بحاجة صيانة';
+    const rows = db.devices.filter(d=>d['الحالة']==='بحاجة صيانة'||d['الحالة']==='خارج الخدمة');
+    headHtml = '<th>رقم الجهاز</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>الأولوية</th><th>ملاحظات</th>';
+    rowsHtml = rows.map(d=>`<tr><td>${esc(d['رقم الجهاز'])}</td><td>${esc(d['نوع الجهاز'])}</td><td>${esc(d['المختبر/الموقع'])}</td><td>${esc(d['الحالة'])}</td><td>${esc(d['الأولوية'])}</td><td>${esc(d['ملاحظات'])}</td></tr>`).join('');
+    if(!rows.length) rowsHtml = '<tr><td colspan="6" class="empty-state">لا توجد أجهزة معطلة حاليًا</td></tr>';
+  } else if(activeReport==='bookings'){
+    title = 'تقرير الحجوزات';
+    const rows = db.bookings.slice().sort((a,b)=>(a['التاريخ']+a['الحصة']).localeCompare(b['التاريخ']+b['الحصة']));
+    headHtml = '<th>رقم الحجز</th><th>التاريخ</th><th>اليوم</th><th>الحصة</th><th>المعلم</th><th>المختبر</th><th>الحالة</th>';
+    rowsHtml = rows.map(b=>`<tr><td>${esc(b['رقم الحجز'])}</td><td>${esc(b['التاريخ'])}</td><td>${esc(b['اليوم'])}</td><td>${esc(b['الحصة'])}</td><td>${esc(b['المعلم'])}</td><td>${esc(b['المختبر'])}</td><td>${esc(b['حالة الحجز'])}</td></tr>`).join('');
+    if(!rows.length) rowsHtml = '<tr><td colspan="7" class="empty-state">لا توجد حجوزات</td></tr>';
+  } else if(activeReport==='overdue'){
+    title = 'تقرير الإعارات المتأخرة';
+    recomputeLoanStatuses();
+    const rows = db.loans.filter(isLoanOverdue);
+    headHtml = '<th>رقم الإعارة</th><th>رقم الجهاز</th><th>المستعير</th><th>تاريخ الاستعارة</th><th>موعد الإرجاع</th>';
+    rowsHtml = rows.map(l=>`<tr><td>${esc(l['رقم الإعارة'])}</td><td>${esc(l['رقم الجهاز'])}</td><td>${esc(l['اسم المستعير'])}</td><td>${esc(l['تاريخ الاستعارة'])}</td><td>${esc(l['موعد الإرجاع'])}</td></tr>`).join('');
+    if(!rows.length) rowsHtml = '<tr><td colspan="5" class="empty-state">لا توجد إعارات متأخرة</td></tr>';
+  } else if(activeReport==='openmaint'){
+    title = 'تقرير بلاغات الصيانة المفتوحة';
+    const rows = db.maintenance.filter(m=>m['حالة الصيانة']!=='مغلق');
+    headHtml = '<th>رقم البلاغ</th><th>رقم الجهاز</th><th>العطل</th><th>الأولوية</th><th>المسؤول</th><th>الحالة</th>';
+    rowsHtml = rows.map(m=>`<tr><td>${esc(m['رقم البلاغ'])}</td><td>${esc(m['رقم الجهاز'])}</td><td>${esc(m['العطل'])}</td><td>${esc(m['الأولوية'])}</td><td>${esc(m['المسؤول'])}</td><td>${esc(m['حالة الصيانة'])}</td></tr>`).join('');
+    if(!rows.length) rowsHtml = '<tr><td colspan="6" class="empty-state">لا توجد بلاغات مفتوحة</td></tr>';
+  }
+
+  area.innerHTML = `
+    <div class="report-header">
+      <h3>${esc(title)}</h3>
+      <span>تاريخ الإصدار: ${dateNow}</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table"><thead><tr>${headHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>
+    </div>
+  `;
+}
+document.getElementById('printReportBtn').addEventListener('click', ()=>{
+  document.getElementById('page-reports').classList.add('printing');
+  window.print();
+  setTimeout(()=>document.getElementById('page-reports').classList.remove('printing'), 500);
+});
+
+/* =========================================================
+   MASTER RENDER
+   ========================================================= */
+function renderAll(){
+  renderDashboard();
+  if(activeSection==='bookings') renderBookings();
+  if(activeSection==='devices') renderDevices();
+  if(activeSection==='maintenance') renderMaintenance();
+  if(activeSection==='loans') renderLoans();
+  if(activeSection==='reports') renderReports();
+}
+
+/* =========================================================
+   GENERIC MODAL FORM ENGINE
+   ========================================================= */
+let currentModal = null; // {type, editId}
+
+function fieldHTML(f, value){
+  const val = value===undefined || value===null ? '' : value;
+  let input = '';
+  if(f.type==='select'){
+    input = `<select data-key="${f.key}" ${f.required?'required':''}>` +
+      (f.placeholder? `<option value="">${esc(f.placeholder)}</option>`:'') +
+      f.options.map(o=>`<option value="${esc(o)}" ${String(val)===String(o)?'selected':''}>${esc(o)}</option>`).join('') +
+      `</select>`;
+  } else if(f.type==='textarea'){
+    input = `<textarea data-key="${f.key}" ${f.readonly?'readonly':''}>${esc(val)}</textarea>`;
+  } else {
+    input = `<input type="${f.type}" data-key="${f.key}" value="${esc(val)}" ${f.required?'required':''} ${f.readonly?'readonly':''}>`;
+  }
+  return `<div class="form-field ${f.full?'full':''}"><label>${esc(f.label)}${f.required?' *':''}</label>${input}</div>`;
+}
+
+function openModal(title, fields, values, onSave){
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalForm').innerHTML = fields.map(f=>fieldHTML(f, values[f.key])).join('');
+  const msg = document.getElementById('formMsg');
+  msg.className = 'form-msg';
+  msg.innerHTML = '';
+  document.getElementById('modalOverlay').classList.add('show');
+  currentModal = { fields, onSave };
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+  currentModal = null;
+}
+document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
+  if(!currentModal) return;
+  const data = {};
+  document.querySelectorAll('#modalForm [data-key]').forEach(el=>{
+    data[el.dataset.key] = el.value;
+  });
+  currentModal.onSave(data);
+});
+
+function showFormError(html){
+  const msg = document.getElementById('formMsg');
+  msg.className = 'form-msg error show';
+  msg.innerHTML = html;
+}
+function clearFormError(){
+  const msg = document.getElementById('formMsg');
+  msg.className = 'form-msg';
+  msg.innerHTML = '';
+}
+
+/* ===== BOOKING MODAL ===== */
+function bookingFields(){
+  return [
+    {key:'رقم الحجز', label:'رقم الحجز', type:'text', readonly:true},
+    {key:'التاريخ', label:'التاريخ', type:'date', required:true},
+    {key:'اليوم', label:'اليوم', type:'select', options:DAYS, required:true},
+    {key:'الحصة', label:'الحصة', type:'select', options:PERIODS, required:true},
+    {key:'المعلم', label:'اسم المعلم', type:'text', required:true},
+    {key:'المادة', label:'المادة', type:'text'},
+    {key:'الصف', label:'الصف', type:'text'},
+    {key:'الشعبة', label:'الشعبة', type:'text'},
+    {key:'المختبر', label:'المختبر', type:'select', options:labsNames(), required:true},
+    {key:'عدد الطلاب', label:'عدد الطلاب', type:'number'},
+    {key:'البرنامج/الأجهزة المطلوبة', label:'البرنامج / الأجهزة المطلوبة', type:'text', full:true},
+    {key:'حالة الحجز', label:'حالة الحجز', type:'select', options:BOOKING_STATUS, required:true},
+    {key:'ملاحظات', label:'ملاحظات', type:'textarea', full:true},
+  ];
+}
+function openBookingModal(id){
+  const editing = !!id;
+  const row = editing ? db.bookings.find(b=>b['رقم الحجز']===id) : {
+    'رقم الحجز': nextId(db.bookings,'رقم الحجز','B'),
+    'التاريخ': todayStr(), 'اليوم': DAYS[0], 'الحصة': PERIODS[0],
+    'حالة الحجز': 'مؤكد'
+  };
+  openModal(editing? 'تعديل الحجز' : 'إضافة حجز جديد', bookingFields(), row, (data)=>{
+    data['عدد الطلاب'] = data['عدد الطلاب'] ? parseInt(data['عدد الطلاب'],10) : '';
+    const conflict = findBookingConflict(data, editing? id : null);
+    if(conflict && data['حالة الحجز'] !== 'ملغي'){
+      const alt = suggestAlternativeLab(data, editing? id : null);
+      let html = `⚠️ يوجد تعارض: المختبر <b>${esc(data['المختبر'])}</b> محجوز بالفعل بتاريخ ${esc(data['التاريخ'])} في الحصة ${esc(data['الحصة'])} (المعلم: ${esc(conflict['المعلم'])}).`;
+      if(alt){
+        html += `<div class="alt-btn"><button type="button" class="btn sm secondary" onclick="applyAltLab('${esc(alt)}')">استخدام المختبر البديل المتاح: ${esc(alt)}</button></div>`;
+      } else {
+        html += `<div style="margin-top:6px;">لا يوجد مختبر بديل متاح في نفس الموعد. الرجاء اختيار حصة أو يوم آخر.</div>`;
+      }
+      showFormError(html);
+      return;
+    }
+    clearFormError();
+    if(editing){
+      Object.assign(row, data);
+    } else {
+      db.bookings.push(data);
+    }
+    saveData();
+    closeModal();
+    renderAll();
+    toast(editing? 'تم تحديث الحجز بنجاح' : 'تمت إضافة الحجز بنجاح', 'success');
+  });
+}
+function applyAltLab(lab){
+  const sel = document.querySelector('#modalForm [data-key="المختبر"]');
+  if(sel){ sel.value = lab; }
+  clearFormError();
+}
+document.getElementById('addBookingBtn').addEventListener('click', ()=>openBookingModal(null));
+
+/* ===== DEVICE MODAL ===== */
+function deviceFields(){
+  return [
+    {key:'رقم الجهاز', label:'رقم الجهاز', type:'text', required:true},
+    {key:'نوع الجهاز', label:'نوع الجهاز', type:'text', required:true},
+    {key:'الماركة/الطراز', label:'الماركة / الطراز', type:'text'},
+    {key:'المختبر/الموقع', label:'المختبر / الموقع', type:'select', options:labsNames().concat(['خزانة STEM','غرفة المعلمين'].filter(x=>!labsNames().includes(x)))},
+    {key:'الحالة', label:'الحالة', type:'select', options:DEVICE_STATUS, required:true},
+    {key:'متاح للاستخدام', label:'متاح للاستخدام', type:'select', options:['نعم','لا']},
+    {key:'المستخدم الحالي', label:'المستخدم الحالي', type:'text'},
+    {key:'تاريخ الشراء', label:'تاريخ الشراء', type:'date'},
+    {key:'آخر صيانة', label:'آخر صيانة', type:'date'},
+    {key:'موعد الصيانة القادمة', label:'موعد الصيانة القادمة', type:'date'},
+    {key:'نظام التشغيل/الإصدار', label:'نظام التشغيل / الإصدار', type:'text'},
+    {key:'البرامج الأساسية', label:'البرامج الأساسية', type:'text', full:true},
+    {key:'الرقم التسلسلي', label:'الرقم التسلسلي', type:'text'},
+    {key:'الأولوية', label:'الأولوية', type:'select', options:DEVICE_PRIORITY},
+    {key:'ملاحظات', label:'ملاحظات', type:'textarea', full:true},
+  ];
+}
+function openDeviceModal(id){
+  const editing = !!id;
+  const row = editing ? db.devices.find(d=>d['رقم الجهاز']===id) : {
+    'رقم الجهاز':'', 'الحالة':'يعمل', 'متاح للاستخدام':'نعم', 'الأولوية':'عادية'
+  };
+  openModal(editing? 'تعديل بيانات الجهاز':'إضافة جهاز جديد', deviceFields(), row, (data)=>{
+    if(!data['رقم الجهاز']){ showFormError('يرجى إدخال رقم الجهاز.'); return; }
+    if(!editing && db.devices.find(d=>d['رقم الجهاز']===data['رقم الجهاز'])){
+      showFormError('رقم الجهاز موجود بالفعل، الرجاء استخدام رقم آخر.'); return;
+    }
+    clearFormError();
+    if(editing){ Object.assign(row, data); }
+    else { db.devices.push(data); }
+    saveData();
+    closeModal();
+    renderAll();
+    toast(editing? 'تم تحديث بيانات الجهاز':'تمت إضافة الجهاز بنجاح', 'success');
+  });
+}
+document.getElementById('addDeviceBtn').addEventListener('click', ()=>openDeviceModal(null));
+
+/* ===== MAINTENANCE MODAL ===== */
+function maintFields(){
+  return [
+    {key:'رقم البلاغ', label:'رقم البلاغ', type:'text', readonly:true},
+    {key:'رقم الجهاز', label:'رقم الجهاز', type:'select', options:deviceIds(), required:true},
+    {key:'نوع الجهاز', label:'نوع الجهاز', type:'text'},
+    {key:'العطل', label:'وصف العطل', type:'text', required:true, full:true},
+    {key:'تاريخ البلاغ', label:'تاريخ البلاغ', type:'date', required:true},
+    {key:'الأولوية', label:'الأولوية', type:'select', options:MAINT_PRIORITY, required:true},
+    {key:'المسؤول', label:'المسؤول', type:'text'},
+    {key:'حالة الصيانة', label:'حالة الصيانة', type:'select', options:MAINT_STATUS, required:true},
+    {key:'تاريخ الإغلاق', label:'تاريخ الإغلاق', type:'date'},
+    {key:'التكلفة التقديرية', label:'التكلفة التقديرية', type:'number'},
+    {key:'ملاحظات', label:'ملاحظات', type:'textarea', full:true},
+  ];
+}
+function openMaintModal(id){
+  const editing = !!id;
+  const row = editing ? db.maintenance.find(m=>m['رقم البلاغ']===id) : {
+    'رقم البلاغ': nextId(db.maintenance,'رقم البلاغ','M'),
+    'تاريخ البلاغ': todayStr(), 'الأولوية':'متوسطة', 'حالة الصيانة':'قيد الفحص'
+  };
+  openModal(editing? 'تعديل بلاغ الصيانة':'إضافة بلاغ صيانة جديد', maintFields(), row, (data)=>{
+    const dev = db.devices.find(d=>d['رقم الجهاز']===data['رقم الجهاز']);
+    if(dev) data['نوع الجهاز'] = dev['نوع الجهاز'];
+    data['التكلفة التقديرية'] = data['التكلفة التقديرية']? parseFloat(data['التكلفة التقديرية']) : '';
+    clearFormError();
+    if(editing){ Object.assign(row, data); }
+    else { db.maintenance.push(data); }
+    if(dev && data['حالة الصيانة']!=='مغلق'){ dev['الحالة']='بحاجة صيانة'; dev['متاح للاستخدام']='لا'; }
+    if(dev && data['حالة الصيانة']==='مغلق'){ dev['الحالة']='يعمل'; dev['متاح للاستخدام']='نعم'; }
+    saveData();
+    closeModal();
+    renderAll();
+    toast(editing? 'تم تحديث بلاغ الصيانة':'تمت إضافة بلاغ الصيانة بنجاح', 'success');
+  });
+}
+document.getElementById('addMaintBtn').addEventListener('click', ()=>openMaintModal(null));
+
+/* ===== LOAN MODAL ===== */
+function loanFields(){
+  return [
+    {key:'رقم الإعارة', label:'رقم الإعارة', type:'text', readonly:true},
+    {key:'رقم الجهاز', label:'رقم الجهاز', type:'select', options:deviceIds(), required:true},
+    {key:'نوع الجهاز', label:'نوع الجهاز', type:'text'},
+    {key:'اسم المستعير', label:'اسم المستعير', type:'text', required:true},
+    {key:'الفئة', label:'الفئة', type:'text'},
+    {key:'تاريخ الاستعارة', label:'تاريخ الاستعارة', type:'date', required:true},
+    {key:'موعد الإرجاع', label:'موعد الإرجاع', type:'date', required:true},
+    {key:'تاريخ الإرجاع الفعلي', label:'تاريخ الإرجاع الفعلي', type:'date'},
+    {key:'الحالة', label:'الحالة', type:'select', options:LOAN_STATUS},
+    {key:'ملاحظات', label:'ملاحظات', type:'textarea', full:true},
+  ];
+}
+function openLoanModal(id){
+  const editing = !!id;
+  const row = editing ? db.loans.find(l=>l['رقم الإعارة']===id) : {
+    'رقم الإعارة': nextId(db.loans,'رقم الإعارة','L'),
+    'تاريخ الاستعارة': todayStr(), 'الحالة':'قيد الإعارة'
+  };
+  openModal(editing? 'تعديل الإعارة':'إضافة إعارة جديدة', loanFields(), row, (data)=>{
+    const dev = db.devices.find(d=>d['رقم الجهاز']===data['رقم الجهاز']);
+    if(dev) data['نوع الجهاز'] = dev['نوع الجهاز'];
+    clearFormError();
+    if(editing){ Object.assign(row, data); }
+    else { db.loans.push(data); }
+    if(dev && !data['تاريخ الإرجاع الفعلي']){ dev['الحالة']='مُعار'; dev['متاح للاستخدام']='لا'; dev['المستخدم الحالي']=data['اسم المستعير']; }
+    if(dev && data['تاريخ الإرجاع الفعلي']){ dev['الحالة']='يعمل'; dev['متاح للاستخدام']='نعم'; dev['المستخدم الحالي']='—'; }
+    saveData();
+    closeModal();
+    renderAll();
+    toast(editing? 'تم تحديث الإعارة':'تمت إضافة الإعارة بنجاح', 'success');
+  });
+}
+document.getElementById('addLoanBtn').addEventListener('click', ()=>openLoanModal(null));
+
+/* =========================================================
+   DELETE
+   ========================================================= */
+function deleteRow(entity, id){
+  const idField = IDFIELD[entity];
+  const ok = confirm('هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.');
+  if(!ok) return;
+  db[entity] = db[entity].filter(r=>r[idField]!==id);
+  saveData();
+  renderAll();
+  toast('تم الحذف بنجاح', 'success');
+}
+
+/* =========================================================
+   EXCEL IMPORT
+   ========================================================= */
+document.getElementById('importExcelInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    try{
+      const data = new Uint8Array(evt.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      importWorkbook(wb);
+    }catch(err){
+      console.error(err);
+      toast('تعذر قراءة ملف Excel، تأكد من صحة الملف', 'error');
+    }
+    e.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function cellToStr(v){
+  if(v instanceof Date){
+    return v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate());
+  }
+  return v;
+}
+function parseSheetRows(ws, idFieldGuess){
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+  let headerIdx = -1, headers = null;
+  for(let i=0;i<aoa.length;i++){
+    const row = aoa[i];
+    if(row && row[0]===idFieldGuess){ headerIdx = i; headers = row; break; }
+  }
+  if(headerIdx===-1){
+    // fallback: first row with >=3 non-null cells that isn't a title-only row
+    for(let i=0;i<aoa.length;i++){
+      const row = aoa[i];
+      const nonNull = row ? row.filter(c=>c!==null && c!=='').length : 0;
+      if(nonNull>=3){ headerIdx = i; headers = row; break; }
+    }
+  }
+  if(headerIdx===-1) return null;
+  const rows = [];
+  for(let i=headerIdx+1;i<aoa.length;i++){
+    const row = aoa[i];
+    if(!row || row.every(c=>c===null || c==='')) continue;
+    const obj = {};
+    headers.forEach((h,idx)=>{
+      if(!h) return;
+      obj[h] = cellToStr(row[idx]===undefined?null:row[idx]);
+    });
+    rows.push(obj);
+  }
+  return rows;
+}
+function importWorkbook(wb){
+  let importedAny = false;
+  Object.keys(SHEET_NAMES).forEach(key=>{
+    if(key==='dashboard') return;
+    const sheetName = SHEET_NAMES[key];
+    if(!wb.SheetNames.includes(sheetName)) return;
+    const ws = wb.Sheets[sheetName];
+    const rows = parseSheetRows(ws, IDFIELD[key]);
+    if(rows && rows.length){
+      db[key] = rows;
+      importedAny = true;
+    }
+  });
+  if(importedAny){
+    recomputeLoanStatuses();
+    saveData();
+    renderAll();
+    toast('تم استيراد ملف Excel وتحديث البيانات بنجاح', 'success');
+  } else {
+    toast('لم يتم العثور على أوراق عمل مطابقة في الملف المرفوع', 'error');
+  }
+}
+
+/* =========================================================
+   EXCEL EXPORT
+   ========================================================= */
+document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+function buildSheetAOA(key){
+  const headers = HEADERS[key];
+  const rows = db[key];
+  const aoa = [];
+  aoa.push([SHEET_TITLES[key]]);
+  aoa.push([]);
+  aoa.push(headers);
+  rows.forEach(r=>{
+    aoa.push(headers.map(h=> r[h]===undefined? null : r[h]));
+  });
+  return aoa;
+}
+function buildDashboardAOA(){
+  const totalDevices = db.devices.length;
+  const workingDevices = db.devices.filter(d=>d['الحالة']==='يعمل').length;
+  const downDevices = db.devices.filter(d=>d['الحالة']==='بحاجة صيانة'||d['الحالة']==='خارج الخدمة').length;
+  recomputeLoanStatuses();
+  const overdue = db.loans.filter(isLoanOverdue);
+  const downList = db.devices.filter(d=>d['الحالة']==='بحاجة صيانة'||d['الحالة']==='خارج الخدمة').map(d=>d['رقم الجهاز']).join('، ');
+  const overdueList = overdue.map(l=>l['رقم الجهاز']).join('، ');
+  const conflicts = findAllBookingConflicts();
+  const conflictText = conflicts.length ? conflicts.map(c=>c.date+' '+c.period+': '+c.lab).join(' | ') : '—';
+
+  const aoa = [
+    [SHEET_TITLES.dashboard],
+    [],
+    ['المؤشر','القيمة',null,'تنبيهات مهمة','التفاصيل'],
+    ['إجمالي الأجهزة', totalDevices, null, 'أجهزة بحاجة متابعة', downList||'—'],
+    ['الأجهزة العاملة', workingDevices, null, 'إعارات متأخرة', overdueList||'—'],
+    ['الأجهزة بحاجة صيانة', downDevices, null, 'تعارض محتمل بالحجز', conflictText],
+    ['إجمالي الحجوزات', db.bookings.length],
+    ['إجمالي الإعارات المتأخرة', overdue.length],
+  ];
+  return aoa;
+}
+function exportToExcel(){
+  try{
+    const wb = XLSX.utils.book_new();
+    Object.keys(SHEET_NAMES).forEach(key=>{
+      if(key==='dashboard'){
+        const ws = XLSX.utils.aoa_to_sheet(buildDashboardAOA());
+        XLSX.utils.book_append_sheet(wb, ws, SHEET_NAMES.dashboard);
+      } else {
+        const ws = XLSX.utils.aoa_to_sheet(buildSheetAOA(key));
+        XLSX.utils.book_append_sheet(wb, ws, SHEET_NAMES[key]);
+      }
+    });
+    XLSX.writeFile(wb, 'نظام_المختبر_الذكي_البيانات.xlsx');
+    toast('تم تصدير البيانات إلى Excel بنجاح', 'success');
+  }catch(err){
+    console.error(err);
+    toast('حدث خطأ أثناء تصدير البيانات', 'error');
+  }
+}
+
+/* =========================================================
+   RESET LOCAL DATA
+   ========================================================= */
+document.getElementById('resetDataBtn').addEventListener('click', ()=>{
+  const ok = confirm('سيتم مسح كل التعديلات المحفوظة محليًا والعودة إلى بيانات ملف Excel الأصلي. هل تريد المتابعة؟');
+  if(!ok) return;
+  localStorage.removeItem(STORAGE_KEY);
+  db = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  saveData();
+  renderAll();
+  toast('تمت إعادة تحميل البيانات الأصلية', 'success');
+});
+
+/* =========================================================
+   BIND FILTER/SEARCH EVENTS (direct, since DOM already loaded)
+   ========================================================= */
+function bindLive(id, fn){
+  const el = document.getElementById(id);
+  if(el){ el.addEventListener('input', fn); el.addEventListener('change', fn); }
+}
+bindLive('bookingSearch', renderBookings);
+bindLive('filterDay', renderBookings);
+bindLive('filterPeriod', renderBookings);
+bindLive('filterLab', renderBookings);
+bindLive('deviceSearch', renderDevices);
+bindLive('filterDeviceStatus', renderDevices);
+bindLive('maintSearch', renderMaintenance);
+bindLive('filterMaintStatus', renderMaintenance);
+bindLive('filterMaintPriority', renderMaintenance);
+bindLive('loanSearch', renderLoans);
+bindLive('filterLoanStatus', renderLoans);
+
+/* =========================================================
+   INIT
+   ========================================================= */
+recomputeLoanStatuses();
+saveData();
+renderAll();
+</script>
+</body>
+</html>
